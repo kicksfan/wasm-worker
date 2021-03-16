@@ -2,11 +2,12 @@ extern crate cfg_if;
 extern crate wasm_bindgen;
 
 mod utils;
+mod worker;
 
 use cfg_if::cfg_if;
 use js_sys::{Promise};
 use wasm_bindgen::prelude::*;
-use web_sys::{FetchEvent, Headers, Request, ResponseInit};
+use web_sys::{FetchEvent, Headers, Request};
 
 cfg_if! {
     // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -18,64 +19,56 @@ cfg_if! {
     }
 }
 
-#[wasm_bindgen]
-extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
-
-    // Multiple arguments too!
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_many(a: &str, b: &str);
+enum Error {
+  NewHeaderInvalid(JsValue),
+  UnableToAppendHeader(JsValue)
 }
 
-// As of writing, web-sys does not support creating Response objects, so
-// we define our own wrapper here
-#[wasm_bindgen]
-extern "C" {
-    type Response;
-
-    #[wasm_bindgen(constructor)]
-    fn new(body: &str, init: ResponseInit) -> Response;
+impl From<Error> for JsValue {
+  fn from(src: Error) -> JsValue {
+    match src {
+      Error::NewHeaderInvalid(error) => error,
+      Error::UnableToAppendHeader(error) => error,
+    }
+  }
 }
 
-#[wasm_bindgen]
-extern "C" {
-    // fn addEventListener(s: &str, f: Function);
-    // fn addEventListener(s: &str, f: &dyn Fn(FetchEvent) -> Promise);
+type FetchHandler<TError> = fn(FetchEvent) -> Result<worker::Response, TError>;
 
-    fn fetch(req: &Request) -> Promise;
-}
+const HANDLER: FetchHandler<Error> = example_static_html;
 
 #[wasm_bindgen]
-pub fn handle_cloudflare_fetch(event: FetchEvent) -> Promise {
-    // console_error_panic_hook::set_once();
-    let response = handler(event);
-    log("foo");
-    Promise::resolve(&JsValue::from(response))
+pub fn js_handler(event: FetchEvent) -> Promise {
+    console_error_panic_hook::set_once();
+    match HANDLER(event) {
+      Ok(success) => Promise::resolve(&JsValue::from(success)),
+      Err(error) => Promise::reject(&JsValue::from(error))
+    }
+    // let response = handler(event);
+    // worker::log("foo");
+    // Promise::resolve(&JsValue::from(response))
 }
 
-fn handler(_event: FetchEvent) -> Response {
+fn example_static_html(_event: FetchEvent) -> Result<worker::Response, Error> {
   // let req = &event.request();
   let body = "<html><head>WASM</head><body>WASM Generated</body></html>";
-  let headers = Headers::new().unwrap();//?;
-  headers.append("content-type", "text/html").unwrap();//?;
-  generate_response(&body, 404, &headers)
+  let headers = Headers::new().map_err(Error::NewHeaderInvalid)?;
+  headers.append("content-type", "text/html").map_err(Error::UnableToAppendHeader)?;
+  Ok(worker::make_response(&body, 404, &headers))
 }
 
-fn generate_response(body: &str, status: u16, headers: &Headers) -> Response {
-  let mut init = ResponseInit::new();
-  init.status(status);
-  init.headers(&JsValue::from(headers));
-  Response::new(body, init)
+fn example_error_response(_event: FetchEvent) -> Result<worker::Response, Error> {
+  Err(Error::NewHeaderInvalid(JsValue::from("foo")))
 }
+
+// fn wasm_generated(_event: FetchEvent) -> Result<worker::Response, Error> {
+//   let body = "<html><head>WASM</head><body>WASM Generated</body></html>";
+//   let headers = Headers::new().unwrap();//?;
+//   headers.append("content-type", "text/html").unwrap();//?;
+//   worker::make_response(&body, 200, &headers)
+// }
+
+
 
 // #[wasm_bindgen]
 // pub fn greet() -> String {
