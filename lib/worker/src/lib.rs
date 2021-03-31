@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 use js_sys::{Promise};
 use wasm_bindgen::prelude::*;
-use web_sys::{FetchEvent, Headers, ResponseInit};
+use web_sys::{FetchEvent, ResponseInit};
 use web_sys::{Request};
 
 cfg_if! {
@@ -81,33 +81,66 @@ impl From<Error> for JsValue {
   }
 }
 
-/**
- * new_header builds an empty Header and maps failure into the worker Error enum
- */
-pub fn new_header() -> Result<Headers, Error> {
-  Headers::new().map_err(Error::NewHeaderInvalid)
+pub struct Headers {
+  inner: Vec<(String, String)>
 }
 
-/**
- * make_headers builds an empty Header and appends the supplied tuple into the values
- */
-pub fn make_headers(values: Vec<(&str, &str)>) -> Result<Headers, Error> {
-  let result = new_header()?;
-  for (key, value) in values {
-    result.append(key, value).map_err(Error::UnableToAppendHeader)?;
+impl Headers {
+  pub fn new() -> Self {
+    Headers {
+      inner: vec![]
+    }
   }
-  Ok(result)
+
+  pub fn from_tuples(values: Vec<(String, String)>) -> Self {
+    Headers {
+      inner: values
+    }
+  }
+
+  fn into_web_sys_headers(&self) -> Result<web_sys::Headers, Error> {
+    let result = web_sys::Headers::new().map_err(Error::NewHeaderInvalid)?;
+    for (key, value) in &self.inner {
+      result.append(&key, &value).map_err(Error::UnableToAppendHeader)?;
+    }
+    Ok(result)
+  }
 }
+
+impl From<Vec<(String, String)>> for Headers {
+  fn from(values: Vec<(String, String)>) -> Headers {
+    Headers::from_tuples(values)
+  }
+}
+
+// /**
+//  * new_header builds an empty Header and maps failure into the worker Error enum
+//  */
+// pub fn new_header() -> Result<web_sys::Headers, Error> {
+//   web_sys::Headers::new().map_err(Error::NewHeaderInvalid)
+// }
+
+// /**
+//  * make_headers builds an empty Header and appends the supplied tuple into the values
+//  */
+// pub fn make_headers(values: Vec<(&str, &str)>) -> Result<web_sys::Headers, Error> {
+//   let result = new_header()?;
+//   for (key, value) in values {
+//     result.append(key, value).map_err(Error::UnableToAppendHeader)?;
+//   }
+//   Ok(result)
+// }
 
 /**
  * make_response constructs a new ResponseInit, populates it and then maps it into
  * a new Response
  */
-pub fn make_response(body: &str, status: u16, headers: &Headers) -> Response {
+pub fn make_response<T: Into<Headers>>(body: &str, status: u16, headers: &T) -> Result<Response, Error> {
   let mut init = ResponseInit::new();
   init.status(status);
-  init.headers(&JsValue::from(headers));
-  Response::new(body, init)
+  let headers: Headers = headers.into();
+  init.headers(&JsValue::from(&headers.into_web_sys_headers()?));
+  Ok(Response::new(body, init))
 }
 
 /**

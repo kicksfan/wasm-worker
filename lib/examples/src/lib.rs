@@ -1,11 +1,7 @@
-// use web_sys::{FetchEvent};
-use web_sys::{Request};
+pub mod return_html;
+pub mod return_json;
 
-pub fn static_html(_request: Request) -> Result<worker::Response, worker::Error> {
-  let body = "<html><head>WASM</head><body>WASM Generated</body></html>";
-  let headers = worker::make_headers(vec![("content-type", "text/html")])?;
-  Ok(worker::make_response(&body, 200, &headers))
-}
+use web_sys::{Request};
 
 pub fn error_response(_request: Request) -> Result<worker::Response, worker::Error> {
   Err(worker::Error::NewHeaderInvalid("foo".into()))

@@ -13,12 +13,13 @@ worker = { version = "0.1.0", path = "../../lib/worker" }
 # js-sys = "0.3.2"
 # lazy_static = "1.1.0"
 # pulldown-cmark = "0.8.0"
+serde = { version = "1.0.79", features = ["derive"] }
 # serde = "1.0.79"
 # serde_derive = "1.0.79"
-# serde_json = "1.0.32"
+serde_json = "1.0.32"
 # time = "0.1.40"
 # url = "2.2.0"
-# wasm-bindgen = { version = "0.2.70", features = ["serde-serialize"] }
+wasm-bindgen = { version = "0.2.70", features = ["serde-serialize"] }
 # wasm-bindgen-futures = "0.4.20"
 
 [dependencies.js-sys]
