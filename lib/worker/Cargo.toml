@@ -18,7 +18,7 @@ cfg-if = "1.0.0"
 # cookie = "0.11.0"
 # futures = "0.1.25"
 # handlebars = { version = "1.0.5", features = ["no_dir_source"], default-features = false }
-# http = "0.1.13"
+http = "0.2.3"
 # js-sys = "0.3.2"
 # lazy_static = "1.1.0"
 pulldown-cmark = "0.8.0"

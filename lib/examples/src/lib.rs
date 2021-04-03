@@ -1,11 +1,13 @@
 pub mod return_html;
-pub mod return_json;
+// pub mod return_json;
+pub mod error_response;
 
-use web_sys::{Request};
+// use web_sys::{Request};
 
-pub fn error_response(_request: Request) -> Result<worker::Response, worker::Error> {
-  Err(worker::Error::NewHeaderInvalid("foo".into()))
-}
+
+// pub fn error_response(_request: Request) -> Result<worker::Response, worker::Error> {
+//   Err(worker::Error::NewHeaderInvalid("foo".into()))
+// }
 
 // #[wasm_bindgen]
 // pub fn greet() -> String {
