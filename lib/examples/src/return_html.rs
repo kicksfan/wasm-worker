@@ -3,8 +3,8 @@ use worker::{FetchHandler, WorkerRequest, WorkerResult};
 #[derive(Default)]
 pub struct Handler {}
 
-impl FetchHandler<String> for Handler {
-  fn handle(&self, _req: WorkerRequest) -> WorkerResult<String> {
+impl FetchHandler for Handler {
+  fn handle(&self, _req: WorkerRequest) -> WorkerResult {
     Ok(r#"<!DOCTYPE html>
       <body>
         <h1>Hello World</h1>

@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+#[derive(Debug)]
 pub enum Error {
   ApplicationError(JsValue),
   NewHeaderFault(JsValue),

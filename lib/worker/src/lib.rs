@@ -2,6 +2,7 @@
 use js_sys::{Promise};
 use wasm_bindgen::prelude::*;
 use web_sys::{FetchEvent, ResponseInit};
+// use serde::{Serialize};
 
 // use web_sys::{Request};
 
@@ -31,21 +32,22 @@ pub use error::*;
 //   }
 // }
 
-pub struct WorkerResponse<T> {
-  _inner: http::Response<T>
+pub struct WorkerResponse {
+  _inner: http::Response<Vec<u8>>
 }
 
-impl<T> WorkerResponse<T> {
-  pub fn new(body: T) -> Self {
+impl WorkerResponse {
+  pub fn new(body: impl AsRef<[u8]>) -> Self {
+    let data: &[u8] = body.as_ref();
     WorkerResponse {
-      _inner: http::Response::new(body)
+      _inner: http::Response::new(data.to_owned())
     }
   }
 }
 
-impl<T> From<T> for WorkerResponse<T> {
-  fn from(src: T) -> WorkerResponse<T> {
-    WorkerResponse::new(src)
+impl<T: AsRef<[u8]>> From<T> for WorkerResponse {
+  fn from(body: T) -> WorkerResponse {
+    WorkerResponse::new(body)
   }
 }
 
@@ -61,24 +63,51 @@ impl<T> From<T> for WorkerResponse<T> {
 //   }
 // }
 
-impl<T> Into<JsValue> for WorkerResponse<T> {
-  fn into(self) -> JsValue {
+impl From<WorkerResponse> for JsValue {
+  fn from(resp: WorkerResponse) -> Self {
+    let headers = web_sys::Headers::new().map_err(Error::NewHeaderFault).unwrap();
+    let values: Vec<(&str, &str)> = vec![("content-type", "text/html;charset=UTF-8")];
+    for (key, value) in values {
+      headers.append(key, value).map_err(Error::UnableToAppendHeader).unwrap();
+    }
     let mut init = ResponseInit::new();
+    init.headers(&JsValue::from(headers));
     init.status(200);
-    let resp = ffi::Response::new("foo bar for life", init);
+    let body = resp._inner.body();
+    console::log(&format!("{:?}", body));
+    let resp = ffi::Response::new(body, init);
+    // let body_string = std::str::from_utf8(body).unwrap_or_default();
+    // let resp = ffi::Response::new(body_string, init);
+    // let body_string: String = body.to_string();//.into();
+    // let body_string = "foo bar for lif";
+    // console::log(&body_string);
+    // let resp = ffi::Response::new(&body_string, init);
     JsValue::from(resp)
   }
 }
 
-pub type WorkerResult<T> = Result<WorkerResponse<T>, Error>;
+// impl<T: AsRef<[u8]>> Into<JsValue> for WorkerResponse<T> {
+//   fn into(self) -> JsValue {
+//     let mut init = ResponseInit::new();
+//     init.status(200);
+//     let body: &T = self._inner.body();
+//     // let body_string: String = body.to_owned().into();
+//     let body_string = "foo bar for lif";
+//     console::log(&body_string);
+//     let resp = ffi::Response::new(&body_string, init);
+//     JsValue::from(resp)
+//   }
+// }
+
+pub type WorkerResult = Result<WorkerResponse, Error>;
 // pub type WorkerResult = dyn WorkerResponse;
 
 pub enum Html {
   Empty
 }
 
-impl Into<WorkerResponse<&str>> for Html {
-  fn into(self) -> WorkerResponse<&'static str> {
+impl Into<WorkerResponse> for Html {
+  fn into(self) -> WorkerResponse {
     match self {
       Html::Empty => WorkerResponse::new("worker response mapping")
     }
@@ -103,8 +132,8 @@ impl Into<WorkerResponse<&str>> for Html {
 //   responder: R
 // }
 
-pub trait FetchHandler<T> {
-  fn handle(&self, req: WorkerRequest) -> WorkerResult<T>;
+pub trait FetchHandler {
+  fn handle(&self, req: WorkerRequest) -> WorkerResult;
 }
 
 // pub enum StatusCodes {
@@ -182,7 +211,7 @@ pub fn make_response<T>(body: T, status: u16, headers: Vec<(String, String)>) ->
  * js_handler is a thin helper which maps a FetchEvent across the provided handler
  * and handles marshaling into JsValues
  */
-pub fn js_handler<T>(handler: impl FetchHandler<T>) -> impl Fn(FetchEvent) -> Promise {
+pub fn js_handler(handler: impl FetchHandler) -> impl Fn(FetchEvent) -> Promise {
   console_error_panic_hook::set_once();
   move | event: FetchEvent | {
     console::log(&format!("client id: {:?}", event.client_id()));
