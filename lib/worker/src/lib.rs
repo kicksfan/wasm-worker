@@ -51,6 +51,18 @@ impl<T: AsRef<[u8]>> From<T> for WorkerResponse {
   }
 }
 
+impl AsRef<WorkerResponse> for str {
+  fn as_ref(&self) -> &WorkerResponse {
+    &WorkerResponse::new(self)
+  }
+}
+
+// impl<T: AsRef<str>> From<T> for WorkerResponse {
+//   fn from(body: T) -> WorkerResponse {
+//     WorkerResponse::new(body)
+//   }
+// }
+
 // impl<T> Into<Result<WorkerResponse<T>, Error>> for T {
 //   fn into(self) -> Result<WorkerResponse<T>, Error> {
 //     Ok(self.into())

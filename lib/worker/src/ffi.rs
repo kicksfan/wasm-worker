@@ -15,6 +15,5 @@ extern "C" {
   pub type Response;
 
   #[wasm_bindgen(constructor)]
-  // pub fn new(body: &str, init: ResponseInit) -> Response;
   pub fn new(body: &[u8], init: ResponseInit) -> Response;
 }
